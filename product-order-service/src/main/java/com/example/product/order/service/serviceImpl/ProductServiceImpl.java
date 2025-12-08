@@ -4,19 +4,21 @@ import com.example.product.order.service.dto.ProductCreateRequest;
 import com.example.product.order.service.dto.ProductResponse;
 import com.example.product.order.service.dto.ProductUpdateRequest;
 import com.example.product.order.service.entity.Product;
+import com.example.product.order.service.exception.BadRequestException;
+import com.example.product.order.service.exception.ExistingProductException;
+import com.example.product.order.service.exception.ProductNotFoundException;
 import com.example.product.order.service.repository.ProductRepository;
 import com.example.product.order.service.service.ProductService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.util.StringUtils;
+
+
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 
 @Service
@@ -25,7 +27,13 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
 
     public ProductServiceImpl(ProductRepository productRepository) {
+
         this.productRepository = productRepository;
+    }
+
+    private Product findProductOrThrow(UUID id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
     }
 
     @Override
@@ -48,8 +56,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse getProduct(UUID id) {
-        Product p = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        Product p = findProductOrThrow(id);
+
         return toResponse(p);
     }
 
@@ -61,12 +69,7 @@ public class ProductServiceImpl implements ProductService {
                                               int size) {
 
 
-        String statusParam;
-        if (status == null || status.trim().isEmpty()) {
-            statusParam = null;
-        } else {
-            statusParam = status.trim();
-        }
+        String statusParam = (StringUtils.hasText(status)) ? status.trim() : null;
 
 
         int pageNumber = Math.max(0, page);
@@ -82,11 +85,12 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse updateProduct(UUID id, ProductUpdateRequest request) {
-        Product p = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+
+        Product p = findProductOrThrow(id);
+
         if (request.getName() != null &&!request.getName().equalsIgnoreCase(p.getName())) {
             if (productRepository.existsByNameIgnoreCase(request.getName().trim())) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new ExistingProductException("Product Already Exists");
             }
             p.setName(request.getName().trim());
         }
@@ -96,13 +100,13 @@ public class ProductServiceImpl implements ProductService {
 
         if (request.getPrice() != null) {
             if (request.getPrice().signum() <= 0) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Price must be greater than 0");
             }
             p.setPrice(request.getPrice());
         }
         if (request.getStockQty() != null) {
             if (request.getStockQty() < 0) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Quantity must be a positive number");
             }
             p.setStockQty(request.getStockQty());
         }
@@ -118,10 +122,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse updateStock(UUID id, int newStockId) {
-
-            Product p = productRepository.findById(id)
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
-            p.setStockQty(newStockId);
+        Product p = findProductOrThrow(id);
 
             p.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
             Product saved = productRepository.save(p);
@@ -130,8 +131,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void softDeleteProduct(UUID id){
-        Product p= productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        Product p = findProductOrThrow(id);
+
         p.setStatus("INACTIVE");
         p.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
         productRepository.save(p);

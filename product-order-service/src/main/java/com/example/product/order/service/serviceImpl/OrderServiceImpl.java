@@ -4,11 +4,16 @@ import com.example.product.order.service.dto.*;
 import com.example.product.order.service.entity.Order;
 import com.example.product.order.service.entity.OrderItem;
 import com.example.product.order.service.entity.Product;
+import com.example.product.order.service.exception.BadRequestException;
+import com.example.product.order.service.exception.OrderNotFoundException;
+import com.example.product.order.service.exception.OutOfStockException;
+import com.example.product.order.service.exception.ProductNotFoundException;
 import com.example.product.order.service.repository.OrderItemRepository;
 import com.example.product.order.service.repository.OrderRepository;
 import com.example.product.order.service.repository.ProductRepository;
 import com.example.product.order.service.service.OrderService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +27,10 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.List;
 
 import java.util.UUID;
@@ -45,9 +54,13 @@ public class OrderServiceImpl implements OrderService {
         this.productRepo = productRepo;
     }
 
+    private Order findOrderOrThrow(UUID id) {
+       return orderRepo.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException( "Order not found"));
+    }
+
 
     @Override
-
     public OrderResponse createOrder(OrderCreateRequest request) {
 
 
@@ -60,18 +73,18 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItemRequest ir : request.getItems()) {
             if (ir.getProductId() == null) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Product ID is required");
             }
             if (ir.getQuantity() == null || ir.getQuantity() <= 0) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Quantity is required");
             }
 
             UUID productId = ir.getProductId();
             Product product = productRepo.findById(productId)
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+                    .orElseThrow(() -> new ProductNotFoundException("Product not found"));
 
             if (!"ACTIVE".equalsIgnoreCase(product.getStatus())) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Product status must be ACTIVE");
             }
 
             BigDecimal priceAtOrder = product.getPrice();
@@ -94,55 +107,69 @@ public class OrderServiceImpl implements OrderService {
     @Override
 
     public OrderResponse getOrder(UUID id) {
-        Order order = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ORDER_NOT_FOUND"));
+        Order order = findOrderOrThrow(id);
+
         List<OrderItem> items = itemRepo.findByOrderId(id);
         return mapToResponse(order);
     }
 
     @Override
-    public Page<OrderResponse> listOrders(String status,
+    public Page<OrderResponse> listOrders(String status,String customerNameContains,LocalDate fromDate,LocalDate toDate,
                                           int page, int size) {
 
+        List<Order> allOrders = orderRepo.findAll();
 
-        String statusParam = null;
-        if (StringUtils.hasText(status)) {
-            statusParam = status.trim();
-        }
+        List<OrderResponse> filtered = allOrders.stream()
+                .filter(o -> status == null || o.getStatus() == null || o.getStatus().equalsIgnoreCase(status))
 
+                .filter(o -> {
+                    if (!StringUtils.hasText(customerNameContains)) return true;
+                    if (o.getCustomerName() == null)
+                        return false;
+                    return o.getCustomerName()
+                            .toLowerCase()
+                            .contains(customerNameContains.toLowerCase());
+                })
 
-//        LocalDateTime fromDateParam = null;
-//        LocalDateTime toDateParam = null;
-
-
-
+                .filter(o -> {
+                    if (fromDate == null) return true;
+                    if (o.getOrderDate() == null) return false;
+                    LocalDate orderLocalDate = o.getOrderDate().toLocalDateTime().toLocalDate();
+                    return !orderLocalDate.isBefore(fromDate);
+                })
+                .filter(o -> {
+                    if (toDate == null) return true;
+                    if (o.getOrderDate() == null) return false;
+                    LocalDate orderLocalDate = o.getOrderDate().toLocalDateTime().toLocalDate();
+                    return !orderLocalDate.isAfter(toDate);
+                })
+                .map(this::mapToResponse)
+                .toList();
 
         int pageNumber = Math.max(0, page);
         int pageSize = Math.max(1, size);
 
-        PageRequest pageable = PageRequest.of(pageNumber, pageSize);
+        int fromIndex = Math.min(pageNumber * pageSize, filtered.size());
+        int toIndex = Math.min(fromIndex + pageSize, filtered.size());
 
-        Page<Order> orderPage = orderRepo.findByFilters(
-                statusParam,
-                pageable);
+        List<OrderResponse> pageContent = (fromIndex >= toIndex) ? Collections.emptyList() : filtered.subList(fromIndex, toIndex);
 
-        return orderPage.map(this::mapToResponse);
+        return new PageImpl<>(pageContent, PageRequest.of(pageNumber, pageSize), filtered.size());
     }
 
 
     @Override
     public OrderResponse updateOrder(UUID id, OrderUpdateRequest request) {
-        Order o = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
+        Order o = findOrderOrThrow(id);
 
         if (request.getCustomerName() != null) {
             if (!"CREATED".equalsIgnoreCase(o.getStatus())) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Customer name must be updated only if the status is CREATED");
             }
 
             String name = request.getCustomerName().trim();
             if (name.isEmpty()) {
-                throw new ResponseStatusException(BAD_REQUEST);
+                throw new BadRequestException("Customer name Cannot be Empty");
             }
             o.setCustomerName(name);
         }
@@ -158,19 +185,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse updateStatus(UUID id, String newStatus) {
-        Order order = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ORDER_NOT_FOUND"));
+        Order order = findOrderOrThrow(id);
 
         String currentStatus = order.getStatus();
         newStatus = newStatus.toUpperCase();
 
         if ("CREATED".equalsIgnoreCase(currentStatus)) {
             if (!newStatus.equals("CONFIRMED") && !newStatus.equals("CANCELLED")) {
-                throw new ResponseStatusException(BAD_REQUEST, "Invalid transition");
+                throw new BadRequestException("Invalid transition");
             }
         } else {
-            throw new ResponseStatusException(
-                    BAD_REQUEST, "Cannot change status when order is in status: " + currentStatus);
+            throw new BadRequestException("Cannot change status when order is in status: " + currentStatus);
         }
 
 
@@ -178,11 +203,10 @@ public class OrderServiceImpl implements OrderService {
             for (OrderItem item : order.getItems()) {
 
                 Product p = productRepo.findById(item.getProductId())
-                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "PRODUCT_NOT_FOUND"));
+                        .orElseThrow(() -> new ProductNotFoundException("Product not found"));
 
                 if (p.getStockQty() < item.getQuantity()) {
-                    throw new ResponseStatusException(
-                            BAD_REQUEST, "Insufficient stock for product");
+                    throw new OutOfStockException("Insufficient stock for product");
                 }
             }
 
@@ -203,15 +227,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void deleteOrder(UUID id) {
-        Order order = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "ORDER_NOT_FOUND"));
+        Order order = findOrderOrThrow(id);
 
         String status = order.getStatus().toUpperCase();
 
         if (!status.equals("CREATED") && !status.equals("CANCELLED")) {
-            throw new ResponseStatusException(
-                    BAD_REQUEST,
-                    "Cannot delete order");
+            throw new BadRequestException("Cannot delete order");
         }
         orderRepo.delete(order);
     }

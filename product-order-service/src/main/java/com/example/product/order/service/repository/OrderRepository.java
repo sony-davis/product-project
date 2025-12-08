@@ -17,17 +17,16 @@ import java.util.UUID;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
-    @Query("""
-        SELECT o FROM Order o
-        WHERE (:status IS NULL OR o.status = :status)
-       
-       
-        """)
-    Page<Order> findByFilters(
-            @Param("status") String status,
-//            @Param("fromDate") LocalDateTime fromDate,
-//            @Param("toDate") LocalDateTime toDate,
-            Pageable pageable);
+//    @Query("""
+//        SELECT o FROM Order o
+//        WHERE (:status IS NULL OR o.status = :status)
+//
+//
+//        """)
+//    Page<Order> findByFilters(
+//            @Param("status") String status,
+//
+//            Pageable pageable);
 
 
 }

@@ -52,7 +52,7 @@ public class ProductController {
 
 
 
-    @PutMapping("/{id}")
+    @PutMapping("updateProduct/{id}")
     public ResponseEntity<ProductResponse> update(@PathVariable UUID id,
                                                   @Valid @RequestBody ProductUpdateRequest req) {
         return ResponseEntity.ok(service.updateProduct(id, req));
@@ -64,7 +64,7 @@ public class ProductController {
         return ResponseEntity.ok(service.updateStock(id, req.getStockQty()));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("deleteProduct/{id}")
     public ResponseEntity<Void> softDelete(@PathVariable UUID id) {
         service.softDeleteProduct(id);
         return ResponseEntity.noContent().build();

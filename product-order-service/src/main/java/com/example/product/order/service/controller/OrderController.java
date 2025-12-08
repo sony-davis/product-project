@@ -10,10 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
-
-import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
 
 
 @RestController
@@ -41,13 +39,14 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<Page<OrderResponse>> listOrders(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String fromDate,
-            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String customerNameContains,
+            @RequestParam(required = false) LocalDate fromDate,
+            @RequestParam(required = false) LocalDate toDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
 
     ) {
-        Page<OrderResponse> result = service.listOrders(status, page, size);
+        Page<OrderResponse> result = service.listOrders(status,customerNameContains,fromDate,toDate, page, size);
         return ResponseEntity.ok(result);
     }
 
@@ -62,7 +61,7 @@ public class OrderController {
                                                      @Valid @RequestBody OrderStatusUpdateRequest req) {
             return ResponseEntity.ok(service.updateStatus(id, req.getStatus()));
     }
-    @DeleteMapping("/{id}")
+    @DeleteMapping("deleteOrder/{id}")
     public ResponseEntity<Void> softDelete(@PathVariable UUID id) {
         service.deleteOrder(id);
         return ResponseEntity.noContent().build();
