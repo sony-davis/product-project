@@ -65,6 +65,7 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductResponse> listProducts(String status,
                                               BigDecimal minPrice,
                                               BigDecimal maxPrice,
+                                              String nameContains,
                                               int page,
                                               int size) {
 
@@ -77,7 +78,7 @@ public class ProductServiceImpl implements ProductService {
 
         PageRequest pageable = PageRequest.of(pageNumber, pageSize);
 
-        Page<Product> productPage = productRepository.findByFilters(statusParam, minPrice, maxPrice, pageable);
+        Page<Product> productPage = productRepository.findByFilters(statusParam, minPrice, maxPrice, nameContains,pageable);
 
         return productPage.map(this::toResponse);
     }

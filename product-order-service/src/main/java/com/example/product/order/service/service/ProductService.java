@@ -20,6 +20,7 @@ public interface ProductService {
     Page<ProductResponse> listProducts(String status,
                                        BigDecimal minPrice,
                                        BigDecimal maxPrice,
+                                       String nameContains,
                                        int page,
                                        int size);
 

@@ -43,10 +43,11 @@ public class ProductController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String nameContains,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Page<ProductResponse> result = service.listProducts(status, minPrice, maxPrice, page, size);
+        Page<ProductResponse> result = service.listProducts(status, minPrice, maxPrice, nameContains,page, size);
         return ResponseEntity.ok(result);
     }
 

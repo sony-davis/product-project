@@ -23,11 +23,13 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
         WHERE (:status IS NULL OR p.status = :status)
           AND (:minPrice IS NULL OR p.price >= :minPrice)
           AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+          AND (:nameContains IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :nameContains, '%')))
         """)
     Page<Product> findByFilters(
             @Param("status") String status,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
+            @Param("nameContains") String nameContains,
             Pageable pageable);
 
 
