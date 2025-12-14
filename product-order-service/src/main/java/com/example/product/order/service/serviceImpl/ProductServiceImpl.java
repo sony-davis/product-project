@@ -3,6 +3,7 @@ package com.example.product.order.service.serviceImpl;
 import com.example.product.order.service.dto.ProductCreateRequest;
 import com.example.product.order.service.dto.ProductResponse;
 import com.example.product.order.service.dto.ProductUpdateRequest;
+import com.example.product.order.service.entity.Order;
 import com.example.product.order.service.entity.Product;
 import com.example.product.order.service.exception.BadRequestException;
 import com.example.product.order.service.exception.ExistingProductException;
@@ -11,6 +12,7 @@ import com.example.product.order.service.repository.ProductRepository;
 import com.example.product.order.service.service.ProductService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -18,6 +20,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -40,17 +43,17 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse createProduct(ProductCreateRequest request) {
 
 
-        Product p = new Product();
-        p.setName(request.getName().trim());
-        p.setDescription(request.getDescription());
-        p.setPrice(request.getPrice());
-        p.setStockQty(request.getStockQty());
-        p.setStatus("ACTIVE");
+        Product product = new Product();
+        product.setName(request.getName().trim());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStockQty(request.getStockQty());
+        product.setStatus("ACTIVE");
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-        p.setCreatedAt(now);
-        p.setUpdatedAt(now);
+        product.setCreatedAt(now);
+        product.setUpdatedAt(now);
 
-        Product saved = productRepository.save(p);
+        Product saved = productRepository.save(product);
         return toResponse(saved);
     }
 
@@ -62,26 +65,43 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductResponse> listProducts(String status,
-                                              BigDecimal minPrice,
-                                              BigDecimal maxPrice,
-                                              String nameContains,
-                                              int page,
-                                              int size) {
+    public Page<ProductResponse> filterProducts(String status,
+                                                BigDecimal minPrice,
+                                                BigDecimal maxPrice,
+                                                String nameContains,
+                                                int page,
+                                                int size) {
 
-
-        String statusParam = (StringUtils.hasText(status)) ? status.trim() : null;
-
+        String statusParam = StringUtils.hasText(status) ? status.trim() : null;
+        String nameParam = StringUtils.hasText(nameContains) ? nameContains.trim() : null;
+        BigDecimal minPriceParam = minPrice != null ? minPrice : null;
+        BigDecimal maxPriceParam = maxPrice != null ? maxPrice : null;
 
         int pageNumber = Math.max(0, page);
         int pageSize = Math.max(1, size);
 
-        PageRequest pageable = PageRequest.of(pageNumber, pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
-        Page<Product> productPage = productRepository.findByFilters(statusParam, minPrice, maxPrice, nameContains,pageable);
+
+        boolean noFilters =
+                statusParam == null &&
+                        minPriceParam == null &&
+                        maxPriceParam == null &&
+                        nameParam == null;
+
+        Page<Product> productPage;
+
+        if (noFilters) {
+
+            productPage = productRepository.findAll(pageable);
+        } else {
+
+            productPage = productRepository.findByFilters(statusParam, minPriceParam, maxPriceParam, nameParam, pageable);
+        }
 
         return productPage.map(this::toResponse);
     }
+
 
 
     @Override

@@ -7,15 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-
 
 @ControllerAdvice
 
 public class GlobalExceptionalHandler {
     @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handle(ProductNotFoundException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleProductException(ProductNotFoundException ex, HttpServletRequest req) {
         ErrorResponse err = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
@@ -24,7 +21,7 @@ public class GlobalExceptionalHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
     }
     @ExceptionHandler(OrderNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handle(OrderNotFoundException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleOrderException(OrderNotFoundException ex, HttpServletRequest req) {
         ErrorResponse err = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
@@ -34,7 +31,7 @@ public class GlobalExceptionalHandler {
     }
 
     @ExceptionHandler(ExistingProductException.class)
-    public ResponseEntity<ErrorResponse> handle(ExistingProductException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleExistingProduct(ExistingProductException ex, HttpServletRequest req) {
         ErrorResponse err = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),
@@ -43,7 +40,7 @@ public class GlobalExceptionalHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(err);
     }
     @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorResponse> handle(BadRequestException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex, HttpServletRequest req) {
         ErrorResponse err = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),
@@ -53,7 +50,7 @@ public class GlobalExceptionalHandler {
     }
 
     @ExceptionHandler(OutOfStockException.class)
-    public ResponseEntity<ErrorResponse> handle(OutOfStockException ex, HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> handleOutOfStock(OutOfStockException ex, HttpServletRequest req) {
         ErrorResponse err = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),

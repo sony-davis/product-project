@@ -17,7 +17,7 @@ public interface ProductService {
 
     ProductResponse getProduct(UUID id);
 
-    Page<ProductResponse> listProducts(String status,
+    Page<ProductResponse> filterProducts(String status,
                                        BigDecimal minPrice,
                                        BigDecimal maxPrice,
                                        String nameContains,

@@ -8,49 +8,34 @@ import com.example.product.order.service.exception.BadRequestException;
 import com.example.product.order.service.exception.OrderNotFoundException;
 import com.example.product.order.service.exception.OutOfStockException;
 import com.example.product.order.service.exception.ProductNotFoundException;
-import com.example.product.order.service.repository.OrderItemRepository;
 import com.example.product.order.service.repository.OrderRepository;
 import com.example.product.order.service.repository.ProductRepository;
 import com.example.product.order.service.service.OrderService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-
 @Service
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepo;
-    private final OrderItemRepository itemRepo;
     private final ProductRepository productRepo;
 
-    public OrderServiceImpl(OrderRepository orderRepo,
-                            OrderItemRepository itemRepo,
-                            ProductRepository productRepo) {
+    public OrderServiceImpl(OrderRepository orderRepo, ProductRepository productRepo) {
         this.orderRepo = orderRepo;
-        this.itemRepo = itemRepo;
         this.productRepo = productRepo;
     }
 
@@ -106,15 +91,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
 
-    public OrderResponse getOrder(UUID id) {
+    public OrderResponse getOrderById(UUID id) {
         Order order = findOrderOrThrow(id);
-
-        List<OrderItem> items = itemRepo.findByOrderId(id);
         return mapToResponse(order);
     }
 
     @Override
-    public Page<OrderResponse> listOrders(String status,String customerNameContains,LocalDate fromDate,LocalDate toDate,
+    public Page<OrderResponse> filterOrders(String status,String customerNameContains,LocalDate fromDate,LocalDate toDate,
                                           int page, int size) {
 
         List<Order> allOrders = orderRepo.findAll();

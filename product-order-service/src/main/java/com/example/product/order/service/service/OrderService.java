@@ -15,10 +15,10 @@ import java.util.UUID;
 public interface OrderService {
     OrderResponse createOrder(OrderCreateRequest request);
 
-    OrderResponse getOrder(UUID id);
+    OrderResponse getOrderById(UUID id);
 
 
-    Page<OrderResponse> listOrders(String status,String customerNameContains,LocalDate fromDate,LocalDate toDate,int page, int size);
+    Page<OrderResponse> filterOrders(String status,String customerNameContains,LocalDate fromDate,LocalDate toDate,int page, int size);
 
     OrderResponse updateOrder(UUID id, @Valid OrderUpdateRequest req);
 
